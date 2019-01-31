@@ -14,6 +14,16 @@ require 'nemweb'
 
 Clamp do
 
+  subcommand "dirs", "List NEMWEB data directories" do
+
+    def execute
+      nemweb.dirs.each do |dir|
+        puts dir.path.split("/").last
+      end
+    end
+
+  end
+
   subcommand "ls", "List a NEMWEB data directory" do
 
     option %w(-l --long), :flag, "print details"

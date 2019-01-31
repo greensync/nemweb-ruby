@@ -31,16 +31,26 @@ class Nemweb
     end
   end
 
+  CURRENT_REPORTS = URI("http://nemweb.com.au/Reports/Current/").freeze
+
   # Public: Get the files in a NEM data directory.
   #
   # dir - subdirectory of http://nemweb.com.au/Reports/Current/
   #
   def list_files(dir)
-    dir_uri = URI("http://nemweb.com.au/Reports/Current/") + dir
+    dir_uri = CURRENT_REPORTS + dir
     doc = Nokogiri::HTML.parse(dir_uri.read)
     doc.css('a').map { |link| link["href"] }.grep(/\.zip$/).map do |href|
       DataFile.new(dir_uri + href, self)
     end
+  end
+
+
+  # Public: List available NEM data directories
+  #
+  def dirs(root_uri = CURRENT_REPORTS)
+    doc = Nokogiri::HTML.parse(root_uri.read)
+    doc.css('a').map { |link| root_uri + link["href"] }
   end
 
   class DataFile < Struct.new(:uri)
