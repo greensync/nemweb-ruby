@@ -1,0 +1,131 @@
+#! /usr/bin/env ruby
+
+require 'clamp'
+require 'json'
+require 'set'
+require 'time'
+
+$stdout.sync = true
+$stderr.sync = true
+
+$LOAD_PATH << File.expand_path('../lib', __dir__)
+
+require 'nemweb'
+
+Clamp do
+
+  subcommand "ls", "List a NEMWEB data directory" do
+
+    option %w(-l --long), :flag, "print details"
+
+    parameter "DIR", "directory to list"
+
+    def execute
+      lags = []
+      nemweb.list_files(dir).each do |data_file|
+        line = data_file.uri.to_s
+        if long?
+          line += " lag=#{get_lag(data_file)}s"
+        end
+        puts line
+      end
+    end
+
+    private
+
+    def get_lag(data_file)
+      return [] unless long?
+      period_start = Time.parse("#{data_file.period} +1000")
+      last_modified = Time.parse(http_head(data_file.uri).fetch("last-modified").first)
+      (last_modified - period_start).to_i
+    end
+
+    def http_head(uri)
+      uri = URI(uri)
+      Net::HTTP.start(uri.host, uri.port) do |http|
+        http.head(uri.path).to_hash
+      end
+    end
+
+  end
+
+  subcommand "fetch", "Fetch a NEMWEB data file" do
+
+    parameter "SOURCE", "data file URI or path"
+
+    def execute
+      nemweb.fetch(source) do |io|
+        IO.copy_stream(io, $stdout)
+      end
+    end
+
+  end
+
+  subcommand "parse", "Parse a NEMWEB data file" do
+
+    parameter "SOURCE", "data file URI or path"
+
+    def execute
+      nemweb.parse(source) do |record|
+        puts JSON.dump(record.to_h)
+      end
+    end
+
+  end
+
+  module DirectoryMonitoring
+
+    def self.included(target)
+      target.option ["-i", "--poll-interval"], "SECONDS", "polling interval", default: 10, &method(:Integer)
+      target.option ["-a", "--after"], "PERIOD", "last period processed"
+    end
+
+    def on_new_data_file(directories)
+      while true do
+        begin
+          directories.each do |dir|
+            files = nemweb.list_files(dir)
+            new_files = if cursors[dir].nil?
+              [files.last]
+            else
+              files.select { |data_file| data_file.period > cursors[dir] }
+            end
+            new_files.each do |data_file|
+              yield data_file
+              cursors[dir] = data_file.period
+            end
+          end
+        rescue OpenURI::HTTPError
+          puts "  HTTPError!"
+        end
+        sleep(poll_interval)
+      end
+    end
+
+    def cursors
+      @cursors ||= Hash.new(after)
+    end
+
+  end
+
+  subcommand "watch", "Watch a NEMWEB data directory" do
+
+    parameter "DIR ...", "directories to watch"
+
+    include DirectoryMonitoring
+
+    def execute
+      on_new_data_file(dir_list) do |data_file|
+        puts data_file.uri
+      end
+    end
+
+  end
+
+  private
+
+  def nemweb
+    Nemweb.new
+  end
+
+end
