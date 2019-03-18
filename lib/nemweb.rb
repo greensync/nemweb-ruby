@@ -93,21 +93,18 @@ class Nemweb
   #
   # If the data source is a ZIP file, extract the first entry.
   #
-  def fetch(source, &block)
-    if source.respond_to?(:close)
-      yield source
-      return
-    end
-    stream = open(source)
-    if source.to_s =~ /zip\Z/i
-      Zip::File.open_buffer(stream) do |zipfile|
-        yield zipfile.entries.first.get_input_stream
+  def fetch(source)
+    open(source) do |stream|
+      if source.to_s =~ /zip\Z/i
+        Zip::File.open_buffer(stream) do |zipfile|
+          zipfile.entries.each do |entry|
+            yield entry.get_input_stream, entry.name
+          end
+        end
+      else
+        yield stream, source
       end
-    else
-      yield stream
     end
-  ensure
-    stream.close if stream.respond_to?(:close)
   end
 
 end

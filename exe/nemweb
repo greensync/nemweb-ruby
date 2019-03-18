@@ -61,11 +61,15 @@ Clamp do
 
   subcommand "fetch", "Fetch a NEMWEB data file" do
 
+    option %w(--name -n), :flag, "display data file name"
+    option %w(--name-only -N), :flag, "display data file name, only"
+
     parameter "SOURCE", "data file URI or path"
 
     def execute
-      nemweb.fetch(source) do |io|
-        IO.copy_stream(io, $stdout)
+      nemweb.fetch(source) do |io, name|
+        puts "file: #{name}" if name? || name_only?
+        IO.copy_stream(io, $stdout) unless name_only?
       end
     end
 
