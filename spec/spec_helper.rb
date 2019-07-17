@@ -1,5 +1,5 @@
 require "bundler/setup"
-require "nemweb"
+require "nemweb/version"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
