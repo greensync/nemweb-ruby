@@ -45,7 +45,6 @@ class Nemweb
     end
   end
 
-
   # Public: List available NEM data directories
   #
   def dirs(root_uri = CURRENT_REPORTS)
@@ -94,15 +93,16 @@ class Nemweb
   # If the data source is a ZIP file, extract the first entry.
   #
   def fetch(source)
-    open(source) do |stream|
-      if source.to_s =~ /zip\Z/i
+    source_uri = CURRENT_REPORTS + source
+    source_uri.open do |stream|
+      if source_uri.to_s =~ /zip\Z/i
         Zip::File.open_buffer(stream) do |zipfile|
           zipfile.entries.each do |entry|
             yield entry.get_input_stream, entry.name
           end
         end
       else
-        yield stream, source
+        yield stream, source_uri
       end
     end
   end
