@@ -10,7 +10,7 @@ $stderr.sync = true
 
 $LOAD_PATH << File.expand_path('../lib', __dir__)
 
-require 'nemweb'
+require 'nemweb/client'
 
 Clamp do
 
@@ -139,7 +139,7 @@ Clamp do
   private
 
   def nemweb
-    Nemweb.new
+    Nemweb::Client.new
   end
 
 end
